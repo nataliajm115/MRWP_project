@@ -5,3 +5,19 @@
 |---|---:|---:|---:|---:|---:|--------------------:|
 | AS Internet | 10,670 | 22,002 | 4.124 | 1040.112 | 252.204 |              1.0000 |
 | WWW Notre Dame | 325,729 | 1,117,563 | 6.862 | 1889.972 | 275.429 |              1.0000 |
+
+### Power-law fits (discrete=True)
+![degree_distributions](results/plots/fig1_degree_distributions.png)
+
+- AS Internet: α = 2.070, xmin = 6
+  - LR vs lognormal: R = −0.35, p = 0.638
+  - Power law and lognormal are statistically indistinguishable; α is consistent with Faloutsos et al. (1999) finding (~2.2).
+- WWW Notre Dame: α = 2.156, xmin = 6
+  - LR vs lognormal: R = −170, p < 0.001
+  - Lognormal is strongly preferred over pure power law for this dataset.
+
+**Interpretation:** Both networks have heavy-tailed degree distributions (⟨k²⟩/⟨k⟩ ≈ 250 confirms this) with power-law 
+exponents in the canonical 2–2.2 range. However, the Notre Dame web graph is better described by lognormal than a
+pure power law, consistent with the broader literature suggesting many "scale-free" networks have power-law-with-cutoff 
+or lognormal tails (Broido & Clauset 2019). This deviation from a pure scale-free model is itself a result, and 
+motivates comparing the real networks against the BA null model to see whether percolation behavior also deviates.
