@@ -1,0 +1,5 @@
+network,strategy,threshold_mean,threshold_std,n_runs,collapse_level
+AS Internet,random failure,0.8214620431115277,0.02833502795229686,20,0.05
+AS Internet,degree-targeted attack,0.02999062792877226,0.0,1,0.05
+WWW Notre Dame,random failure,0.7484987520300618,0.014238938229745682,20,0.05
+WWW Notre Dame,degree-targeted attack,0.07999901758824053,0.0,1,0.05
