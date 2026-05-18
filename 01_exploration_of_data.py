@@ -3,17 +3,15 @@ import numpy as np
 import matplotlib.pyplot as plt
 import powerlaw
 from pathlib import Path
+from graph_io import load_graph, NETWORK_FILES
 
 # paths
-INPUT_DIR = Path(__file__).parent / "datasets"
 PLOTS_DIR = Path(__file__).parent / "results" / "plots"
 OUTPUT_DATA_DIR = Path(__file__).parent / "results" / "data"
 
 # Load data
-G_as = nx.read_edgelist(INPUT_DIR / "oregon1_010331.txt",
-                        nodetype=int, comments="#")
-G_web = nx.read_edgelist(INPUT_DIR / "web-NotreDame.txt",
-                         nodetype=int, comments="#")
+G_as = load_graph(NETWORK_FILES["AS Internet"])
+G_web = load_graph(NETWORK_FILES["WWW Notre Dame"])
 
 print(f"AS:  {G_as.number_of_nodes()} nodes, {G_as.number_of_edges()} edges")
 print(f"Web: {G_web.number_of_nodes()} nodes, {G_web.number_of_edges()} edges")
