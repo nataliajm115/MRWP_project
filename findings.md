@@ -35,3 +35,20 @@ motivates comparing the real networks against the BA null model to see whether p
 
 ### Figure 2: percolation curves
 ![percolation](results/plots/fig2_percolation_curves.png)
+
+## Step 3:
+
+
+## Step 4: deviations from the BA null
+
+| Network | Strategy | f_c (real) | f_c (BA) | Δf_c | Δ (mean) | Δ (min) |
+|---|---|---:|---:|---:|---:|---:|
+| AS Internet | Random failure | 0.821 | 0.786 | +0.036 | −0.026 | −0.069 |
+| AS Internet | Degree-targeted attack | 0.030 | 0.150 | −0.120 | −0.086 | −0.892 |
+| WWW Notre Dame | Random failure | 0.748 | 0.841 | −0.093 | −0.123 | −0.222 |
+| WWW Notre Dame | Degree-targeted attack | 0.080 | 0.230 | −0.150 | −0.145 | −0.852 |
+
+### Figure 4: real-minus-BA deviation curves
+![ba_deviations](results/plots/fig4_ba_deviations.png)
+
+Both networks are more fragile than BA under degree-targeted attack, suggesting real hubs are less substitutable than BA's preferential-attachment hubs and consistent with a shared mechanism across the two systems. Under random failure, however, the two networks diverge: AS tracks its BA null closely while WWW is meaningfully more fragile. The heavy-tailed degree distribution alone is therefore not sufficient to reproduce the observed fragility, and the residual fragility is system-specific rather than a shared higher-order mechanism.
