@@ -109,6 +109,10 @@ def generate_configuration_model(G, seed=RANDOM_SEED):
     """Return a configuration-model graph with the same degree sequence as G."""
     degrees = [d for _, d in G.degree()]
     cm = nx.configuration_model(degrees, seed=seed)
+    # This matches the degree sequence, yet it returns a random pseudograph. which can have
+    # - parallel edges,
+    # - self-loops.
+    # Thus, need to remove them.
     cm = nx.Graph(cm)                      
     cm.remove_edges_from(nx.selfloop_edges(cm))
     print(f"  CM:   N={cm.number_of_nodes():,}, E={cm.number_of_edges():,} "
