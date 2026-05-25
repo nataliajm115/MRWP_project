@@ -1,32 +1,20 @@
 """
-Step 4 - Compare the deviations of the two real networks from their
-respective BA nulls.
+Step 4 - Deviations of the real networks from their matched null models.
 
-Builds directly on the output of step 3: instead of plotting percolation
-curves again, this script asks how much each real network departs from
-its matched BA preferential-attachment null along the removal axis.
-
-If the two real networks deviate from their BA nulls in the same way,
-that points to a shared higher-order structural mechanism (e.g.
-clustering, degree-degree correlations) acting on top of the heavy
-tail. If they deviate differently, the fragility-beyond-scale-free
-story is system-specific.
-
-For each network and each strategy we compute:
-  Delta(f) = S_real(f) - S_BA(f)
-where S(f) is the largest-component fraction at removal fraction f.
-
-Threshold deviations are also reported:
-  Delta_fc = fc_real - fc_BA
+We also report a summary quantity, the share of the real-vs-ER
+threshold gap that is closed by moving from ER to BA and from BA to
+CM. This makes it easy to read off, for each network and strategy,
+how much explanatory work each successive null does.
 
 Inputs:
   results/data/step3_percolation_curves.csv
   results/data/step3_percolation_thresholds.csv
 
 Outputs:
-  results/data/step4_ba_deviations.csv
-  results/data/step4_threshold_deviations.csv
-  results/plots/fig4_ba_deviations.png
+  results/data/step4_null_deviations.csv          (point-wise curves)
+  results/data/step4_threshold_deviations.csv     (per-null thresholds)
+  results/data/step4_explained_shares.csv         (summary)
+  results/plots/fig4_null_deviations.png
 """
 
 from pathlib import Path
@@ -46,114 +34,166 @@ PLOTS_DIR.mkdir(parents=True, exist_ok=True)
 STEP3_CURVES = DATA_DIR / "step3_percolation_curves.csv"
 STEP3_THRESHOLDS = DATA_DIR / "step3_percolation_thresholds.csv"
 
+NULL_MODELS = ["ER", "BA", "CM"]
+NULL_COLORS = {"ER": "#DC267F", "BA": "#FFB000", "CM": "#785EF0"}
+NULL_LINESTYLES = {"ER": "--", "BA": ":", "CM": "-."}
 
-# Helpers
+
+# Curve deviations
 def compute_curve_deviations(curves: pd.DataFrame) -> pd.DataFrame:
-    """Delta(f) = real - BA, point by point, per (network, strategy).
+    """Delta(f) = S_real(f) - S_null(f), per (network, strategy, null model).
 
-    The two random-failure curves are independent averages, so we
-    propagate their std-deviations in quadrature to get a deviation
-    band. The targeted-attack runs are deterministic (lcc_std = 0)
-    so the propagated std collapses to zero, as expected.
+    The std on the deviation is propagated in quadrature from the
+    real and null random-failure stds. For targeted attack both
+    stds are zero, so the band collapses, as expected.
     """
-    # keep only real and BA; ER is not needed for step 4
-    sub = curves[curves["model"].isin(["real", "BA"])].copy()
+    real = curves[curves["model"] == "real"].rename(
+        columns={"lcc_fraction": "lcc_real", "lcc_std": "std_real"}
+    )[["network", "strategy", "fraction_removed", "lcc_real", "std_real"]]
 
-    wide = sub.pivot_table(
-        index=["network", "strategy", "fraction_removed"],
-        columns="model",
-        values=["lcc_fraction", "lcc_std"],
-    ).reset_index()
+    rows = []
+    for null in NULL_MODELS:
+        nullc = curves[curves["model"] == null].rename(
+            columns={
+                "lcc_fraction": f"lcc_{null}",
+                "lcc_std": f"std_{null}",
+            }
+        )[["network", "strategy", "fraction_removed",
+           f"lcc_{null}", f"std_{null}"]]
 
-    # flatten the multi-index columns
-    wide.columns = [
-        f"{a}_{b}" if b else a for a, b in wide.columns
-    ]
+        merged = real.merge(
+            nullc, on=["network", "strategy", "fraction_removed"], how="inner"
+        )
+        merged["null_model"] = null
+        merged["delta"] = merged["lcc_real"] - merged[f"lcc_{null}"]
+        merged["delta_std"] = np.sqrt(
+            merged["std_real"].fillna(0) ** 2
+            + merged[f"std_{null}"].fillna(0) ** 2
+        )
+        rows.append(merged[[
+            "network", "strategy", "null_model", "fraction_removed",
+            "lcc_real", f"lcc_{null}", "delta", "delta_std",
+        ]].rename(columns={f"lcc_{null}": "lcc_null"}))
 
-    wide["delta"] = wide["lcc_fraction_real"] - wide["lcc_fraction_BA"]
-    wide["delta_std"] = np.sqrt(
-        wide["lcc_std_real"].fillna(0) ** 2
-        + wide["lcc_std_BA"].fillna(0) ** 2
-    )
+    return pd.concat(rows, ignore_index=True)
 
-    return wide[[
-        "network", "strategy", "fraction_removed",
-        "lcc_fraction_real", "lcc_fraction_BA",
-        "delta", "delta_std",
+
+# Threshold deviations
+def compute_threshold_deviations(thresholds: pd.DataFrame) -> pd.DataFrame:
+    # fc_real - fc_null per (network, strategy, null model)
+    real = thresholds[thresholds["model"] == "real"].rename(
+        columns={"threshold_mean": "fc_real", "threshold_std": "fc_real_std"}
+    )[["network", "strategy", "fc_real", "fc_real_std"]]
+
+    rows = []
+    for null in NULL_MODELS:
+        nullt = thresholds[thresholds["model"] == null].rename(
+            columns={
+                "threshold_mean": "fc_null",
+                "threshold_std": "fc_null_std",
+            }
+        )[["network", "strategy", "fc_null", "fc_null_std"]]
+        merged = real.merge(nullt, on=["network", "strategy"], how="inner")
+        merged["null_model"] = null
+        merged["delta_fc"] = merged["fc_real"] - merged["fc_null"]
+        merged["delta_fc_std"] = np.sqrt(
+            merged["fc_real_std"].fillna(0) ** 2
+            + merged["fc_null_std"].fillna(0) ** 2
+        )
+        rows.append(merged)
+
+    out = pd.concat(rows, ignore_index=True)
+    return out[[
+        "network", "strategy", "null_model",
+        "fc_real", "fc_null", "delta_fc", "delta_fc_std",
     ]]
 
 
-def compute_threshold_deviations(thresholds: pd.DataFrame) -> pd.DataFrame:
-    """fc_real - fc_BA per (network, strategy), with propagated std."""
-    sub = thresholds[thresholds["model"].isin(["real", "BA"])].copy()
+# Explained-share summary
+def compute_explained_shares(threshold_devs: pd.DataFrame) -> pd.DataFrame:
+    """How much of the real-vs-ER threshold gap is closed by BA and CM?
 
-    wide = sub.pivot_table(
+    For each (network, strategy):
+      gap_ER  = |fc_real - fc_ER|         (total gap to the no-heavy-tail null)
+      gap_BA  = |fc_real - fc_BA|         (gap remaining after a BA heavy tail)
+      gap_CM  = |fc_real - fc_CM|         (gap remaining after fixing the exact degree sequence)
+
+      explained_by_BA = 1 - gap_BA / gap_ER   share of the real-vs-ER gap closed by moving from ER to BA
+      explained_by_CM = 1 - gap_CM / gap_ER   share closed by moving from ER all the way to CM
+
+    A high explained_by_CM means the degree sequence is doing almost
+    all the explanatory work; a low value means there is substantial
+    fragility beyond the degree distribution itself.
+    """
+    pivot = threshold_devs.pivot_table(
         index=["network", "strategy"],
-        columns="model",
-        values=["threshold_mean", "threshold_std"],
+        columns="null_model",
+        values="delta_fc",
     ).reset_index()
-    wide.columns = [f"{a}_{b}" if b else a for a, b in wide.columns]
 
-    wide["delta_threshold"] = (
-        wide["threshold_mean_real"] - wide["threshold_mean_BA"]
-    )
-    wide["delta_threshold_std"] = np.sqrt(
-        wide["threshold_std_real"].fillna(0) ** 2
-        + wide["threshold_std_BA"].fillna(0) ** 2
-    )
+    pivot["gap_ER"] = pivot["ER"].abs()
+    pivot["gap_BA"] = pivot["BA"].abs()
+    pivot["gap_CM"] = pivot["CM"].abs()
 
-    return wide[[
+    with np.errstate(divide="ignore", invalid="ignore"):
+        pivot["explained_by_BA"] = 1.0 - pivot["gap_BA"] / pivot["gap_ER"]
+        pivot["explained_by_CM"] = 1.0 - pivot["gap_CM"] / pivot["gap_ER"]
+
+    return pivot[[
         "network", "strategy",
-        "threshold_mean_real", "threshold_mean_BA",
-        "delta_threshold", "delta_threshold_std",
+        "gap_ER", "gap_BA", "gap_CM",
+        "explained_by_BA", "explained_by_CM",
     ]]
 
 
 # Plot
 def plot_deviations(deviations: pd.DataFrame, out_path: Path) -> None:
-    """Two-panel figure: random failure on the left, targeted on the right.
-    Both real networks overlaid as Delta(f) curves with shaded std bands.
-    """
-    strategies = ["random failure", "degree-targeted attack"]
+    """Grid: rows = networks, cols = strategies; each panel overlays
+    Delta_ER, Delta_BA, Delta_CM vs fraction removed."""
     networks = sorted(deviations["network"].unique())
-    colors = {"AS Internet": "C0", "WWW Notre Dame": "C3"}
+    strategies = ["random failure", "degree-targeted attack"]
 
     fig, axes = plt.subplots(
-        1, len(strategies),
-        figsize=(5.5 * len(strategies), 4),
-        sharey=True, squeeze=False,
+        len(networks), len(strategies),
+        figsize=(5.5 * len(strategies), 4 * len(networks)),
+        sharey="row", squeeze=False,
     )
-    axes = axes[0]
 
-    for ax, strategy in zip(axes, strategies):
-        for network_name in networks:
-            sub = deviations[
-                (deviations["network"] == network_name)
-                & (deviations["strategy"] == strategy)
-            ].sort_values("fraction_removed")
-            if sub.empty:
-                continue
+    for r, network_name in enumerate(networks):
+        for c, strategy in enumerate(strategies):
+            ax = axes[r, c]
+            for null in NULL_MODELS:
+                sub = deviations[
+                    (deviations["network"] == network_name)
+                    & (deviations["strategy"] == strategy)
+                    & (deviations["null_model"] == null)
+                ].sort_values("fraction_removed")
+                if sub.empty:
+                    continue
 
-            color = colors.get(network_name, None)
-            ax.plot(
-                sub["fraction_removed"], sub["delta"],
-                label=network_name, color=color,
-            )
-            std = sub["delta_std"].fillna(0)
-            ax.fill_between(
-                sub["fraction_removed"],
-                sub["delta"] - std,
-                sub["delta"] + std,
-                color=color, alpha=0.2,
-            )
+                ax.plot(
+                    sub["fraction_removed"], sub["delta"],
+                    label=f"real - {null}",
+                    color=NULL_COLORS[null],
+                    linestyle=NULL_LINESTYLES[null],
+                    linewidth=2,
+                )
+                std = sub["delta_std"].fillna(0)
+                if (std > 0).any():
+                    ax.fill_between(
+                        sub["fraction_removed"],
+                        sub["delta"] - std,
+                        sub["delta"] + std,
+                        color=NULL_COLORS[null], alpha=0.15,
+                    )
 
-        ax.axhline(0, linestyle="--", linewidth=1, color="grey")
-        ax.set_title(strategy)
-        ax.set_xlabel("fraction of nodes removed")
-        ax.grid(True, alpha=0.3)
-
-    axes[0].set_ylabel(r"$\Delta$(LCC fraction) = real $-$ BA")
-    axes[-1].legend(frameon=False)
+            ax.axhline(0, linestyle="--", linewidth=1, color="grey",
+                       label="null baseline (Δ = 0)")
+            ax.set_title(f"{network_name} – {strategy}")
+            ax.set_xlabel("fraction of nodes removed")
+            ax.grid(True, alpha=0.3)
+        axes[r, 0].set_ylabel(r"$\Delta$(LCC fraction) = real $-$ null")
+    axes[0, -1].legend(frameon=False, loc="lower right")
     plt.tight_layout()
     plt.savefig(out_path, dpi=150)
     plt.show()
@@ -170,28 +210,34 @@ def main() -> None:
     thresholds = pd.read_csv(STEP3_THRESHOLDS)
 
     deviations = compute_curve_deviations(curves)
-    threshold_deviations = compute_threshold_deviations(thresholds)
+    threshold_devs = compute_threshold_deviations(thresholds)
+    shares = compute_explained_shares(threshold_devs)
 
-    deviations.to_csv(DATA_DIR / "step4_ba_deviations.csv", index=False)
-    threshold_deviations.to_csv(
+    deviations.to_csv(DATA_DIR / "step4_null_deviations.csv", index=False)
+    threshold_devs.to_csv(
         DATA_DIR / "step4_threshold_deviations.csv", index=False
     )
+    shares.to_csv(DATA_DIR / "step4_explained_shares.csv", index=False)
 
-    plot_deviations(deviations, PLOTS_DIR / "fig4_ba_deviations.png")
+    plot_deviations(deviations, PLOTS_DIR / "fig4_null_deviations.png")
 
     print("\nSaved:")
-    print(f"  {DATA_DIR / 'step4_ba_deviations.csv'}")
+    print(f"  {DATA_DIR / 'step4_null_deviations.csv'}")
     print(f"  {DATA_DIR / 'step4_threshold_deviations.csv'}")
-    print(f"  {PLOTS_DIR / 'fig4_ba_deviations.png'}")
+    print(f"  {DATA_DIR / 'step4_explained_shares.csv'}")
+    print(f"  {PLOTS_DIR / 'fig4_null_deviations.png'}")
 
-    print("\nThreshold deviations (fc_real - fc_BA):")
-    print(threshold_deviations.to_string(index=False))
+    print("\nThreshold deviations (fc_real - fc_null):")
+    print(threshold_devs.to_string(index=False))
 
-    # quick sign-of-deviation summary to make the interpretation obvious
-    print("\nMean curve deviation by network / strategy "
-          "(negative = real more fragile than BA):")
+    print("\nShare of the real-vs-ER threshold gap closed by each null"
+          " (1.00 = real and null collapse at the same point):")
+    print(shares.to_string(index=False))
+
+    print("\nCurve-deviation summary by network / strategy / null"
+          " (negative mean = real more fragile than null on average):")
     summary = (
-        deviations.groupby(["network", "strategy"])["delta"]
+        deviations.groupby(["network", "strategy", "null_model"])["delta"]
         .agg(["mean", "min", "max"])
         .reset_index()
     )
