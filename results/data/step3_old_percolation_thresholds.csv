@@ -1,0 +1,13 @@
+network,model,strategy,threshold
+AS Internet,real,random failure,0.821 ± 0.028
+AS Internet,real,degree-targeted attack,0.030 ± 0.000
+AS Internet,ER,random failure,0.739 ± 0.011
+AS Internet,ER,degree-targeted attack,0.290 ± 0.000
+AS Internet,BA,random failure,0.786 ± 0.017
+AS Internet,BA,degree-targeted attack,0.150 ± 0.000
+WWW Notre Dame,real,random failure,0.748 ± 0.014
+WWW Notre Dame,real,degree-targeted attack,0.080 ± 0.000
+WWW Notre Dame,ER,random failure,0.830 ± 0.000
+WWW Notre Dame,ER,degree-targeted attack,0.430 ± 0.000
+WWW Notre Dame,BA,random failure,0.841 ± 0.003
+WWW Notre Dame,BA,degree-targeted attack,0.230 ± 0.000

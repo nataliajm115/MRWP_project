@@ -5,9 +5,13 @@ AS Internet,ER,random failure,0.7389550140581067,0.011343159746116355,20,0.05
 AS Internet,ER,degree-targeted attack,0.2899718837863168,0.0,1,0.05
 AS Internet,BA,random failure,0.7859559512652297,0.01744593563416427,20,0.05
 AS Internet,BA,degree-targeted attack,0.14995313964386128,0.0,1,0.05
+AS Internet,CM,random failure,0.8029475164011245,0.0202813759739752,20,0.05
+AS Internet,CM,degree-targeted attack,0.03992502343017807,0.0,1,0.05
 WWW Notre Dame,real,random failure,0.7484987520300618,0.014238938229745682,20,0.05
 WWW Notre Dame,real,degree-targeted attack,0.07999901758824053,0.0,1,0.05
 WWW Notre Dame,ER,random failure,0.8299997850974277,0.0,20,0.05
 WWW Notre Dame,ER,degree-targeted attack,0.42999855708272827,0.0,1,0.05
 WWW Notre Dame,BA,random failure,0.840998805755705,0.00299973290680291,20,0.05
 WWW Notre Dame,BA,degree-targeted attack,0.2299979430753786,0.0,1,0.05
+WWW Notre Dame,CM,random failure,0.8479981825382449,0.003999643875737213,20,0.05
+WWW Notre Dame,CM,degree-targeted attack,0.10999941669301781,0.0,1,0.05
